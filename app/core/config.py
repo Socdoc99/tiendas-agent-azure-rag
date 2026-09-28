@@ -11,6 +11,18 @@ class Settings(BaseSettings):
 
     environment: str = "sbx"
     azure_region: str | None = None
+    business_timezone: str = "America/Bogota"
+    demo_business_id: str = ""
+    demo_establishment_id: str = ""
+
+    sql_server: str = ""
+    sql_database: str = ""
+    sql_username: str = ""
+    sql_password_secret_name: str = "sql-password"
+    sql_driver: str = "ODBC Driver 18 for SQL Server"
+    sql_query_timeout_seconds: int = Field(default=15, gt=0, le=120)
+    sql_max_rows: int = Field(default=200, gt=0)
+    agent_max_database_queries: int = Field(default=10, ge=1, le=10)
 
     azure_search_endpoint: str | None = None
     azure_search_index: str = "idx-tiendas-knowledge-v1"

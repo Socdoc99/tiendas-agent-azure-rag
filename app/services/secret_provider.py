@@ -11,7 +11,7 @@ class KeyVaultSecretProvider:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self._client: SecretClient | None = None
-        self._api_key: str | None = None
+        self._secret_cache: dict[str, str] = {}
 
     @property
     def client(self) -> SecretClient:
@@ -24,18 +24,24 @@ class KeyVaultSecretProvider:
             )
         return self._client
 
-    async def get_openai_api_key(self) -> str:
-        if self._api_key:
-            return self._api_key
+    def get_secret_value(self, secret_name: str) -> str:
+        """Resolve a named secret without logging or exposing its value."""
+        if secret_name in self._secret_cache:
+            return self._secret_cache[secret_name]
+        if not secret_name.strip():
+            raise DependencyUnavailableError("A required Key Vault secret name is not configured.")
         try:
-            secret = await asyncio.to_thread(
-                self.client.get_secret, self.settings.openai_api_key_secret_name
-            )
+            secret = self.client.get_secret(secret_name)
         except Exception as exc:
             raise DependencyUnavailableError(
-                "The configured OpenAI API key is unavailable in Key Vault."
+                "A required secret is unavailable in Key Vault."
             ) from exc
         if not secret.value:
-            raise DependencyUnavailableError("The configured OpenAI API key is empty.")
-        self._api_key = secret.value
-        return self._api_key
+            raise DependencyUnavailableError("A required Key Vault secret is empty.")
+        self._secret_cache[secret_name] = secret.value
+        return secret.value
+
+    async def get_openai_api_key(self) -> str:
+        return await asyncio.to_thread(
+            self.get_secret_value, self.settings.openai_api_key_secret_name
+        )
