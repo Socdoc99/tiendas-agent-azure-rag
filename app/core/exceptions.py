@@ -17,9 +17,18 @@ class DocumentValidationError(ServiceError):
     status_code = 400
 
 
+class DocumentNotFoundError(ServiceError):
+    code = "document_not_found"
+    status_code = 404
+
+
 class UnsupportedDocumentError(ServiceError):
     code = "unsupported_document"
     status_code = 415
+
+
+class UnsupportedScannedDocumentError(UnsupportedDocumentError):
+    code = "unsupported_scanned_document"
 
 
 class EmbeddingError(ServiceError):

@@ -19,6 +19,16 @@ async def test_health_does_not_require_external_services() -> None:
 
 
 @pytest.mark.asyncio
+async def test_root_serves_the_chat_ui() -> None:
+    transport = httpx.ASGITransport(app=create_app(Settings(_env_file=None)))
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/")
+
+        assert response.status_code == 200
+        assert "Asistente documental" in response.text
+
+
+@pytest.mark.asyncio
 async def test_readiness_reports_missing_runtime_configuration() -> None:
     transport = httpx.ASGITransport(app=create_app(Settings(_env_file=None)))
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
