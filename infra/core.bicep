@@ -5,8 +5,11 @@ targetScope = 'resourceGroup'
 @maxLength(6)
 param nameSuffix string = 'k7m4p2'
 
-@description('Deployment region. Defaults to the existing resource group region.')
-param location string = resourceGroup().location
+@description('Region for data and monitoring resources. Defaults to the existing resource group region.')
+param dataLocation string = resourceGroup().location
+
+@description('Region for Azure Container Apps resources. Keep equal to dataLocation unless ACA capacity requires otherwise.')
+param appLocation string = dataLocation
 
 @description('Use Free first. Basic is the only permitted fallback.')
 @allowed([
@@ -36,7 +39,7 @@ module search './modules/search.bicep' = {
   name: 'tiendas-search-core'
   params: {
     name: names.search
-    location: location
+    location: dataLocation
     skuName: searchSku
     tags: tags
   }
@@ -46,7 +49,7 @@ module storage './modules/storage.bicep' = {
   name: 'tiendas-storage-core'
   params: {
     name: names.storage
-    location: location
+    location: dataLocation
     containerName: names.blobContainer
     tags: tags
   }
@@ -56,7 +59,7 @@ module keyVault './modules/keyvault.bicep' = {
   name: 'tiendas-keyvault-core'
   params: {
     name: names.keyVault
-    location: location
+    location: dataLocation
     tenantId: subscription().tenantId
     tags: tags
   }
@@ -66,7 +69,7 @@ module registry './modules/acr.bicep' = {
   name: 'tiendas-acr-core'
   params: {
     name: names.registry
-    location: location
+    location: dataLocation
     tags: tags
   }
 }
@@ -74,7 +77,8 @@ module registry './modules/acr.bicep' = {
 module monitoring './modules/monitoring.bicep' = {
   name: 'tiendas-monitoring-core'
   params: {
-    location: location
+    dataLocation: dataLocation
+    appLocation: appLocation
     workspaceName: names.logAnalytics
     appInsightsName: names.appInsights
     environmentName: names.containerEnvironment

@@ -84,9 +84,9 @@
 
 - Phase 2: declare the core Azure resources in Bicep and validate the deployment plan against the existing resource group before deployment.
 
-## Phase 2 — Azure Core infrastructure
+## Phase 2A — Core Infrastructure
 
-**Status:** BLOCKED — partial deployment
+**Status:** PASS
 **Date:** 2026-09-28 12:04 COT
 
 ### Changes
@@ -103,9 +103,8 @@
   - `kv-tiendas-sbx-k7m4p2` — Standard, RBAC enabled, `Succeeded`.
   - `acrtiendasagentsbxk7m4p2` — Basic, admin account disabled, `Succeeded`.
   - `log-tiendas-agent-sbx` — 30-day retention and 1 GB/day ingestion cap, `Succeeded`.
-  - `appi-tiendas-agent-sbx` — workspace-based, `Succeeded`.
-- `cae-tiendas-agent-sbx` failed in `eastus` with `ManagedEnvironmentCapacityHeavyUsageError` / `AKSCapacityHeavyUsage`.
-- The core deployment `tiendas-agent-core` is therefore `Failed` overall. No Container App has been created.
+- `appi-tiendas-agent-sbx` — workspace-based, `Succeeded`.
+- The Search, Storage, Key Vault, ACR, Log Analytics, and Application Insights resources are in the existing resource group and remain the targets for local execution.
 - The existing Foundry account and project were `Ignore` in `what-if`; neither was changed. No model deployment was touched.
 
 ### Commands and checks
@@ -114,12 +113,40 @@
 - `az deployment group validate` — PASS.
 - `az deployment group what-if` — 9 creates, 2 existing Foundry resources ignored; Search Free, ACR Basic, Storage Standard LRS, Consumption environment.
 - `az deployment group create` — PARTIAL; failed only while allocating the Container Apps Environment in `eastus` due Azure regional capacity.
-- Resource state queries confirmed the six listed service resources `Succeeded` and the environment `Failed`.
+- Resource state queries confirmed the six core services listed above as `Succeeded`.
 
-### Decision required
+### Exit criteria
 
-- The plan's base region is `eastus`. Continue by retrying `eastus` later, or move only the Container Apps Environment to another region. No region change will be made without direction.
+- Core data and observability resources are deployed successfully.
+- The Foundry account/project and model deployment were not changed.
+- This phase is separate from the Container Apps runtime Environment.
+
+## Phase 2B — Application Runtime
+
+**Status:** PENDING — regional capacity
+**Last remote check:** 2026-09-28
+
+### Azure resources
+
+- Existing `cae-tiendas-agent-sbx` in `eastus` reports `Updating`.
+- ARM deployment `tiendas-agent-env-retry` reports `Running`.
+- Azure still reports `ManagedEnvironmentCapacityHeavyUsageError` / `AKSCapacityHeavyUsage` for `eastus`; the current ARM deployment has not reached a terminal state.
+- No parallel deployment has been started. Do not start one while the deployment is `Running` or the Environment is `Updating`.
+- No Container App has been created.
+
+### Recovery plan
+
+- Recheck the remote ARM deployment and Environment before every Azure operation.
+- If the current deployment succeeds, use the existing Environment.
+- If it fails specifically because of regional capacity, run `what-if` first and make exactly one Environment attempt in `eastus2` using `appLocation=eastus2`. Keep `dataLocation=eastus` so Search, Storage, Key Vault, ACR, Log Analytics, and Application Insights stay where they already are. Do not create another Resource Group.
+- If the result is a different error, stop and inspect it before changing infrastructure.
+
+## Phases 3–8 — Local application and Azure data-plane work
+
+**Status:** UNBLOCKED by Phase 2B
+
+Proceed with Azure AI Search, document ingestion, hybrid retrieval, RAG, guardrails, and UI through local execution against the deployed core services. Do not create a Container App or begin Phase 9 until a Container Apps Environment is operational.
 
 ### Next action
 
-- Resolve Container Apps Environment region/capacity, then finish Phase 2 before starting Phase 3.
+- Continue Phase 3 against `srch-tiendas-agent-sbx-k7m4p2`; do not run a Bicep deployment while `tiendas-agent-env-retry` is still `Running`.

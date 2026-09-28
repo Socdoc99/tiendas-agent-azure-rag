@@ -26,4 +26,6 @@ ruff check .
 docker build -t tiendas-agent-azure-rag .
 ```
 
+En Windows tambien puedes abrir el menu local y de preflight con [`scripts/workflow.bat`](scripts/workflow.bat). El menu no aplica despliegues Azure; revisa primero el estado remoto y exige `what-if` antes de cualquier futura operacion Bicep.
+
 Consulta [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SECURITY.md](docs/SECURITY.md) y [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) para la arquitectura y operación.

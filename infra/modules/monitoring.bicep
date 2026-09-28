@@ -1,4 +1,5 @@
-param location string
+param dataLocation string
+param appLocation string
 param workspaceName string
 param appInsightsName string
 param environmentName string
@@ -6,7 +7,7 @@ param tags object = {}
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: workspaceName
-  location: location
+  location: dataLocation
   properties: {
     retentionInDays: 30
     sku: {
@@ -23,7 +24,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   name: appInsightsName
-  location: location
+  location: dataLocation
   kind: 'web'
   properties: {
     Application_Type: 'web'
@@ -36,7 +37,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
 
 resource containerEnvironment 'Microsoft.App/managedEnvironments@2025-07-01' = {
   name: environmentName
-  location: location
+  location: appLocation
   properties: {
     appLogsConfiguration: {
       destination: 'log-analytics'
