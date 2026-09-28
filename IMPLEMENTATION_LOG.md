@@ -133,6 +133,7 @@
 - No parallel deployment has been started. Do not start one while the deployment is `Running` or the Environment is `Updating`.
 - No Container App has been created.
 - Key Vault metadata listing and secret retrieval were denied by RBAC (`ForbiddenByRbac`, missing `Microsoft.KeyVault/vaults/secrets/readMetadata/action`). This does not establish whether `openai-api-key` exists. No secret value was returned or exposed, and no RBAC was changed.
+- Resource-scope RBAC queries resolved the signed-in guest by object ID and found only two inherited `Owner` assignments at subscription scope. No Search, Storage Blob, or Key Vault data-plane role is assigned at those scopes.
 
 ### Recovery plan
 
@@ -167,6 +168,7 @@ Do not create a Container App or begin Phase 9 until a Container Apps Environmen
 - Search service/index metadata read and schema creation succeeded with the current identity.
 - Synthetic document upload was rejected with HTTP 403 Forbidden; the subsequent cleanup request was also denied and no synthetic record was written. Search document query was rejected with HTTP 403 Forbidden.
 - Do not report data-plane read/write or `is_active` filter acceptance as verified. The identity needs an appropriate Azure AI Search data-plane role; no role assignment was changed.
+- To complete this phase, grant the executing identity `Search Index Data Contributor` on the Search service (or equivalent read and write roles).
 
 ## Phase 4 — Document pipeline
 
@@ -176,6 +178,7 @@ Do not create a Container App or begin Phase 9 until a Container Apps Environmen
 - Implemented PDF, DOCX, TXT, and MD extraction, normalization, page-aware token chunking, SHA-256 deduplication, private Blob upload, embeddings, Search upload, update, and delete operations.
 - Local parser/chunking and mocked idempotent ingestion tests pass.
 - Live ingestion was not run: Search data-plane requests are forbidden, and the Key Vault secret `openai-api-key` could not be read. No sample document was supplied.
+- For live ingestion, the identity also needs `Storage Blob Data Contributor` on the Storage account and `Key Vault Secrets User` on the vault; no assignments were made.
 
 ## Phase 5 — Hybrid retrieval
 

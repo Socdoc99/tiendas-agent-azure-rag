@@ -116,13 +116,19 @@ azd ai project version
 azd ai connection version
 echo.
 echo [Preflight] Roles en la suscripcion objetivo
-az role assignment list --assignee "%EXPECTED_ACCOUNT%" --scope "/subscriptions/%EXPECTED_SUBSCRIPTION%" --query "[].roleDefinitionName" -o tsv
-echo Roles Search data-plane:
-az role assignment list --assignee "%EXPECTED_ACCOUNT%" --scope "/subscriptions/%EXPECTED_SUBSCRIPTION%/resourceGroups/%RESOURCE_GROUP%/providers/Microsoft.Search/searchServices/%SEARCH_SERVICE%" --query "[].roleDefinitionName" -o tsv
-echo Roles Storage data-plane:
-az role assignment list --assignee "%EXPECTED_ACCOUNT%" --scope "/subscriptions/%EXPECTED_SUBSCRIPTION%/resourceGroups/%RESOURCE_GROUP%/providers/Microsoft.Storage/storageAccounts/%STORAGE_ACCOUNT%" --query "[].roleDefinitionName" -o tsv
-echo Roles Key Vault data-plane:
-az role assignment list --assignee "%EXPECTED_ACCOUNT%" --scope "/subscriptions/%EXPECTED_SUBSCRIPTION%/resourceGroups/%RESOURCE_GROUP%/providers/Microsoft.KeyVault/vaults/%KEY_VAULT%" --query "[].roleDefinitionName" -o tsv
+set "AZ_PRINCIPAL="
+for /f "usebackq delims=" %%P in (`az ad signed-in-user show --query id -o tsv 2^>nul`) do set "AZ_PRINCIPAL=%%P"
+if not defined AZ_PRINCIPAL (
+  echo No se pudo resolver el object ID del usuario actual para consultar RBAC.
+) else (
+  az role assignment list --assignee "!AZ_PRINCIPAL!" --scope "/subscriptions/%EXPECTED_SUBSCRIPTION%" --include-inherited --query "[].roleDefinitionName" -o tsv
+  echo Roles Search data-plane:
+  az role assignment list --assignee "!AZ_PRINCIPAL!" --scope "/subscriptions/%EXPECTED_SUBSCRIPTION%/resourceGroups/%RESOURCE_GROUP%/providers/Microsoft.Search/searchServices/%SEARCH_SERVICE%" --include-inherited --query "[].roleDefinitionName" -o tsv
+  echo Roles Storage data-plane:
+  az role assignment list --assignee "!AZ_PRINCIPAL!" --scope "/subscriptions/%EXPECTED_SUBSCRIPTION%/resourceGroups/%RESOURCE_GROUP%/providers/Microsoft.Storage/storageAccounts/%STORAGE_ACCOUNT%" --include-inherited --query "[].roleDefinitionName" -o tsv
+  echo Roles Key Vault data-plane:
+  az role assignment list --assignee "!AZ_PRINCIPAL!" --scope "/subscriptions/%EXPECTED_SUBSCRIPTION%/resourceGroups/%RESOURCE_GROUP%/providers/Microsoft.KeyVault/vaults/%KEY_VAULT%" --include-inherited --query "[].roleDefinitionName" -o tsv
+)
 goto :pause_menu
 
 :local_checks
