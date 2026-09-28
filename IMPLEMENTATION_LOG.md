@@ -2,7 +2,7 @@
 
 ## Phase 0 — Preflight
 
-**Status:** PASS  
+**Status:** PASS
 **Date:** 2026-09-28 11:46 COT
 
 ### Changes
@@ -49,3 +49,37 @@
 ### Next action
 
 - Phase 1: bootstrap the application and verify its local tests, lint, and Docker build.
+
+## Phase 1 — Application bootstrap
+
+**Status:** PASS
+**Date:** 2026-09-28 11:53 COT
+
+### Changes
+
+- Added the FastAPI application, settings, structured request logging, typed service errors, health/readiness routes, and Pydantic request/metadata/search schemas.
+- Added dependency manifests, `.env.example`, Git/Docker ignore rules, Dockerfile, Makefile, initial README, and architecture/security/deployment/data/runbook docs.
+- Docker runs the service as an unprivileged `app` user.
+- Added unit coverage for health/readiness and request/document schemas.
+
+### Azure resources
+
+- Created or modified: none.
+- The model names remain unset and are required runtime configuration; no model name was invented.
+
+### Tests and validation
+
+- `.venv\\Scripts\\python.exe -m pytest -v` — PASS, 5 tests.
+- `.venv\\Scripts\\ruff.exe check .` — PASS.
+- `git diff --check` — PASS.
+- `docker build -t tiendas-agent-azure-rag:phase1 .` — PASS using Python 3.12 image.
+- Ran the image as a container; `/health` returned `{"status":"ok"}` and the container user was `app` — PASS.
+
+### Decisions and issues
+
+- Local tests run on Python 3.11.9; the container uses Python 3.12 as specified by the plan.
+- `/ready` currently checks required configuration only. Low-cost connectivity checks for Azure services are added with their integration phases.
+
+### Next action
+
+- Phase 2: declare the core Azure resources in Bicep and validate the deployment plan against the existing resource group before deployment.
