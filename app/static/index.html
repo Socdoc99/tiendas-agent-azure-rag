@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#102c2a" />
+    <title>Asistente TiendasON</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="TiendasON, inicio">
+          <span class="brand-mark" aria-hidden="true">T</span>
+          <span>TiendasON</span>
+        </a>
+        <span class="environment">Asistente documental</span>
+      </header>
+
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">CONSULTA INTERNA</p>
+        <h1 id="page-title">¿Qué necesitas saber?</h1>
+        <p class="subtitle">Pregunta sobre los documentos disponibles y revisa las fuentes de cada respuesta.</p>
+      </section>
+
+      <section class="conversation" aria-label="Conversación">
+        <div id="messages" class="messages" aria-live="polite">
+          <article class="message assistant-message">
+            <div class="avatar" aria-hidden="true">T</div>
+            <div class="message-body">
+              <p>Hola. Puedo ayudarte a encontrar información en los documentos disponibles.</p>
+            </div>
+          </article>
+        </div>
+
+        <form id="chat-form" class="composer">
+          <label class="sr-only" for="question">Escribe tu pregunta</label>
+          <textarea id="question" name="question" rows="2" maxlength="4000" placeholder="Escribe tu pregunta..." required></textarea>
+          <div class="composer-footer">
+            <p class="privacy-note">Las respuestas incluyen referencias a las fuentes consultadas.</p>
+            <button id="send-button" type="submit">
+              <span id="send-label">Enviar</span>
+              <span class="send-icon" aria-hidden="true">↑</span>
+            </button>
+          </div>
+        </form>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+      </section>
+      <footer>Verifica la fuente antes de tomar decisiones operativas.</footer>
+    </main>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
