@@ -30,7 +30,7 @@ The query engine validates a single readonly T-SQL `SELECT`, resolves its one se
 
 ## Transition state
 
-The repository currently contains the earlier document-RAG application. Keep that implementation isolated from the POS path while importing the validated prototype in small phases. Remove old Foundry runtime code only after the OpenAI replacement and equivalent regression tests pass. Azure AI Search and Blob remain available for a later `search_documents` capability.
+The POS graph now consumes `LLMProvider`; its OpenAI implementation uses the configured `OPENAI_CHAT_MODEL` and resolves the API key from Key Vault. The target app contains no Foundry runtime fallback. Existing Foundry resources and the source prototype remain untouched. The earlier document-RAG app stays isolated until the POS API/UI migration. Azure AI Search and Blob remain available for a later `search_documents` capability.
 
 ## Azure
 

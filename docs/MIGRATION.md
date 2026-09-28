@@ -12,7 +12,7 @@ Azure AI Search and Blob remain provisioned, but document RAG is a future capabi
 
 1. **Phase 3 — TiendasON domain:** migrate `tenant.py`, `database/`, `semantic/`, `query_engine/`, and source regression tests. Adapt only imports and secret handling needed by the target repository.
 2. **Phase 4 — Agent and chat:** migrate instructions, tools, graph, chat service/store, and public contracts with mocks.
-3. **Phase 5 — Model provider:** introduce `LLMProvider` and OpenAI API provider using the approved `gpt-5-mini`; retrieve the key from Key Vault. Keep Foundry code until tests pass.
+3. **Phase 5 — Model provider:** introduce `LLMProvider` and OpenAI API provider using the configured `gpt-5-mini`; retrieve the key from Key Vault. Local provider/graph tests pass. The real OpenAI smoke is blocked until Key Vault data-plane access is granted. No Foundry runtime fallback exists in the target app; existing Foundry resources and prototype code remain untouched.
 4. **Phase 6 — Local SQL E2E:** validate readonly queries, tenant isolation, and business questions using authorized configuration.
 5. **Phase 7 — Guardrails/evaluation:** golden questions, unsupported-domain refusals, prompt-injection, tenant-tampering, and query-budget tests.
 6. **Phase 8 — Customer UI:** migrate the prototype's vanilla JS/CSS/Jinja2 experience.

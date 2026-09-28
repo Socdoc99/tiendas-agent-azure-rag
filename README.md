@@ -17,7 +17,7 @@ The locally validated prototype `Agente IA TiendasON` is the source of implement
 
 - Phases 0, 1, and 2A are complete; Phase 2B Container Apps is pending regional capacity.
 - Architecture rebaseline is recorded in [`IMPLEMENTATION_LOG.md`](IMPLEMENTATION_LOG.md).
-- Phase 3 imports the domain layer from the prototype. Later phases migrate orchestration, replace Foundry with OpenAI, validate readonly SQL, add evaluation, and migrate the customer UI.
+- Phases 3 and 4 have migrated the tenant-scoped domain layer and LangGraph/chat contracts. Phase 5 adds the configurable OpenAI provider (`gpt-5-mini`); its local tests pass, while a real smoke is blocked by Key Vault data-plane RBAC. Phases 6–8 remain pending.
 - The repository still contains the previous document-RAG implementation. Keep it out of the POS query path and do not remove it until the replacement is tested.
 - Do not begin Phase 9 until the existing Container Apps Environment is operational.
 
@@ -40,6 +40,7 @@ Use the existing `rg-tiendas-agent-sbx` and existing data resources. Do not recr
 
 ## Documentation
 
+- The master implementation file is the migration plan; this root README is the product/developer overview; `docs/` holds detailed architecture and operational guidance; local `README.md` files explain module boundaries. Current behavior is defined by code and tests. Treat `reference/` as historical evidence, not runtime truth.
 - [Architecture](docs/ARCHITECTURE.md)
 - [Semantic model](docs/SEMANTIC_MODEL.md)
 - [Security](docs/SECURITY.md)
