@@ -1,35 +1,49 @@
-# Tiendas Agent Azure RAG
+# Tiendas Agent
 
-MVP para responder preguntas empresariales a partir de documentos, con retrieval-augmented generation sobre Azure AI Search.
+Tiendas Agent is a customer-facing TiendasON assistant for an authorized shop owner or establishment administrator to ask questions about their own sales, tickets, products, prices, and inventory.
 
-El desarrollo ocurre en `develop`; `main` es la rama estable.
+## Product direction
 
-## Desarrollo local
+The MVP's primary data source is TiendasON's operational SQL Server, queried through a tenant-scoped semantic layer and a readonly query engine. Azure AI Search remains deployed for a later documentation feature; it is not part of POS analytics' critical path. Microsoft Foundry is not a runtime dependency for the target architecture.
 
-Requiere Python 3.11 o superior. La imagen de producción usa Python 3.12.
+```text
+Customer chat -> FastAPI -> LangGraph agent -> query_database
+                                      -> semantic views -> readonly SQL Server
+```
+
+The locally validated prototype `Agente IA TiendasON` is the source of implementation for the tenant, database, semantic, query engine, agent, chat, and UI modules. The prototype is read-only reference material and must not be modified. Never copy its `.git`, `.env`, credentials, or tokens.
+
+## Current migration status
+
+- Phases 0, 1, and 2A are complete; Phase 2B Container Apps is pending regional capacity.
+- Architecture rebaseline is recorded in [`IMPLEMENTATION_LOG.md`](IMPLEMENTATION_LOG.md).
+- Phase 3 imports the domain layer from the prototype. Later phases migrate orchestration, replace Foundry with OpenAI, validate readonly SQL, add evaluation, and migrate the customer UI.
+- The repository still contains the previous document-RAG implementation. Keep it out of the POS query path and do not remove it until the replacement is tested.
+- Do not begin Phase 9 until the existing Container Apps Environment is operational.
+
+## Local development
+
+Use Python 3.11 or newer. Never copy the prototype's local `.env`; configure this checkout separately. SQL connection credentials must come from Key Vault at runtime. Demo tenant IDs are server-side configuration and must never be accepted from a chat request or model tool arguments.
 
 ```powershell
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
-uvicorn app.main:app --reload
 ```
 
-La aplicación permite consultar `/health` sin servicios externos. Para habilitar `/ready` y las funciones RAG, completa las variables de Azure y los nombres de modelos en `.env`. No guardes claves reales en Git.
+Run focused tests with `python -m pytest`. Do not run database smoke scripts until the approved SQL credentials and tenant configuration are present. Such scripts are read-only but query live business data.
 
-## Comprobaciones
+## Azure boundaries
 
-```powershell
-python -m pytest
-ruff check .
-docker build -t tiendas-agent-azure-rag .
-```
+Use the existing `rg-tiendas-agent-sbx` and existing data resources. Do not recreate resources or change the existing Foundry account, project, or model deployment. Refresh the ARM deployment and Container Apps Environment state before any infrastructure change; do not deploy while the deployment is `Running` or the Environment is `Updating`. See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
-En Windows tambien puedes abrir el menu local y de preflight con [`scripts/workflow.bat`](scripts/workflow.bat). El menu no aplica despliegues Azure; revisa primero el estado remoto y exige `what-if` antes de cualquier futura operacion Bicep.
+## Documentation
 
-Flujo local: opción `1` prepara el entorno y crea `.env` sin sobrescribirlo; opción `2` consulta suscripción, recursos, providers, roles y herramientas; opción `3` ejecuta pytest y Ruff; opción `9` crea/actualiza el índice Search; opción `4` inicia la API. Con la API activa en una terminal, usa la opción `A` en otra ventana para subir e indexar un PDF, DOCX, TXT o MD. El índice está creado en el sandbox. La identidad actual todavía recibe 403 al consultar/escribir documentos Search y no puede leer el secreto de Key Vault, así que la ingesta real y el chat quedan pendientes de corregir el acceso de datos.
-
-La Fase 2B de Container Apps sigue en curso remoto. No ejecutes Fase 9 hasta que `cae-tiendas-agent-sbx` esté operativo. Las Fases 3–8 se trabajan localmente; el detalle verificado está en [`IMPLEMENTATION_LOG.md`](IMPLEMENTATION_LOG.md).
-
-Consulta [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SECURITY.md](docs/SECURITY.md) y [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) para la arquitectura y operación.
+- [Architecture](docs/ARCHITECTURE.md)
+- [Semantic model](docs/SEMANTIC_MODEL.md)
+- [Security](docs/SECURITY.md)
+- [Migration](docs/MIGRATION.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Implementation log](IMPLEMENTATION_LOG.md)
+- [Master implementation instruction](CODEX_IMPLEMENTATION_MASTER_TIENDAS_AGENT.md)

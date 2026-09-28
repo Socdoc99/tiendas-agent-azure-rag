@@ -18,28 +18,27 @@ set "STORAGE_ACCOUNT=sttiendasagentsbxk7m4p2"
 set "KEY_VAULT=kv-tiendas-sbx-k7m4p2"
 set "ENVIRONMENT=cae-tiendas-agent-sbx"
 set "DEPLOYMENT=tiendas-agent-env-retry"
+set "PHASES_3_TO_8_READY=NO"
 
 :menu
 cls
 echo ============================================================
-echo Tiendas Agent Azure RAG - flujo local y preflight
+echo Tiendas Agent POS Analytics - flujo local y preflight
 echo ============================================================
 echo 1. Preparar entorno local
 echo 2. Verificar sesion, repo y herramientas
 echo 3. Ejecutar pruebas y lint
-echo 4. Ejecutar API local
-echo 5. Construir imagen Docker local [Fase 9: requiere ACA operativo]
+echo 4. Ejecutar API local [RAG legado; POS pendiente]
+echo 5. Construir imagen Docker local [Fase 9: bloqueada]
 echo 6. Consultar estado Azure (solo lectura)
 echo 7. Verificar Bicep y revisar What-If (sin aplicar)
 echo 8. Ver fases y gate actual
-echo 9. Crear/actualizar indice Azure AI Search
-echo A. Subir e indexar un documento via API local
+echo 9. Ejecutar pruebas focalizadas de Fase 3 (sin SQL real)
 echo 0. Salir
 echo.
-choice /c 123456789A0 /n /m "Selecciona una opcion: "
-if errorlevel 11 goto :done
-if errorlevel 10 goto :ingest_document
-if errorlevel 9 goto :create_search_index
+choice /c 1234567890 /n /m "Selecciona una opcion: "
+if errorlevel 10 goto :done
+if errorlevel 9 goto :phase3_tests
 if errorlevel 8 goto :roadmap
 if errorlevel 7 goto :azure_whatif
 if errorlevel 6 goto :azure_status
@@ -158,12 +157,17 @@ if not exist ".venv\Scripts\python.exe" (
   echo Ejecuta primero la opcion 1 para preparar .venv.
   goto :pause_menu
 )
+echo El chat HTTP actual es el flujo documental legado; no representa aun el agente POS migrado.
 echo La API se ejecutara localmente. Usa Ctrl+C para detenerla.
 ".venv\Scripts\python.exe" -m uvicorn app.main:app --reload
 goto :pause_menu
 
 :docker_build
 echo.
+if /I not "%PHASES_3_TO_8_READY%"=="YES" (
+  echo BLOQUEADO: Fase 9 requiere Fases 3 a 8 aprobadas y registradas.
+  goto :pause_menu
+)
 set "ENV_STATE="
 for /f "usebackq delims=" %%S in (`az containerapp env show --resource-group "%RESOURCE_GROUP%" --name "%ENVIRONMENT%" --query properties.provisioningState -o tsv 2^>nul`) do set "ENV_STATE=%%S"
 if /I not "!ENV_STATE!"=="Succeeded" (
@@ -220,35 +224,16 @@ echo [Bicep] What-If (no aplica recursos). Revisa cada cambio antes de autorizar
 az deployment group what-if --resource-group "%RESOURCE_GROUP%" --name tiendas-agent-core-review --template-file infra\core.bicep --parameters searchSku=free dataLocation=eastus appLocation=eastus
 goto :pause_menu
 
-:create_search_index
+:phase3_tests
 echo.
 if not exist ".venv\Scripts\python.exe" (
   echo Ejecuta primero la opcion 1 para preparar .venv.
   goto :pause_menu
 )
-echo Estado ARM y ACA antes de operar Search:
-az deployment group show --resource-group "%RESOURCE_GROUP%" --name "%DEPLOYMENT%" --query properties.provisioningState -o tsv
-az containerapp env show --resource-group "%RESOURCE_GROUP%" --name "%ENVIRONMENT%" --query properties.provisioningState -o tsv
-echo El indice es una operacion de data-plane; no inicia un deployment ARM paralelo.
-".venv\Scripts\python.exe" scripts\create_search_index.py
-if errorlevel 1 echo ERROR: El indice no se pudo crear. Revisa modelo de embeddings, dimensiones e identidad de Search.
-goto :pause_menu
-
-:ingest_document
-echo.
-if not exist ".venv\Scripts\python.exe" (
-  echo Ejecuta primero la opcion 1 para preparar .venv.
-  goto :pause_menu
-)
-set "DOCUMENT_PATH="
-set /p "DOCUMENT_PATH=Ruta del archivo PDF, DOCX, TXT o MD: "
-if not defined DOCUMENT_PATH goto :pause_menu
-echo Estado ARM y ACA antes de indexar contenido:
-az deployment group show --resource-group "%RESOURCE_GROUP%" --name "%DEPLOYMENT%" --query properties.provisioningState -o tsv
-az containerapp env show --resource-group "%RESOURCE_GROUP%" --name "%ENVIRONMENT%" --query properties.provisioningState -o tsv
-echo La ingesta usa la API local y los servicios Azure de datos ya desplegados.
-".venv\Scripts\python.exe" scripts\ingest_document.py "%DOCUMENT_PATH%"
-if errorlevel 1 echo ERROR: No se pudo cargar e indexar el documento.
+".venv\Scripts\python.exe" -m pytest tests\test_query_engine.py tests\test_sales.py tests\test_sale_lines.py tests\test_products.py tests\unit\test_tenant.py tests\unit\test_database_connection.py -v
+if errorlevel 1 goto :check_failed
+".venv\Scripts\ruff.exe" check .
+if errorlevel 1 goto :check_failed
 goto :pause_menu
 
 :roadmap
@@ -257,11 +242,12 @@ echo Fase 0 - PASS: preflight registrado en IMPLEMENTATION_LOG.md
 echo Fase 1 - PASS: FastAPI base y verificaciones locales
 echo Fase 2A - PASS: Core Infrastructure en el RG existente
 echo Fase 2B - PENDIENTE: ultimo estado ARM Failed por timeout; ACA sigue Updating
-echo Fase 3 - PARCIAL: indice creado; prueba Search data-plane devuelve 403
-echo Fases 4 a 6 - IMPLEMENTADAS LOCALMENTE; Azure Search y Key Vault bloquean validacion E2E
-echo Fases 7 y 8 - PASS local; tests y ruta UI verificados
+echo Rebaseline - COMPLETE: TiendasON customer POS analytics; prototipo como fuente
+echo Fase 3 - PASS local: tenant, readonly SQL, semantica, query engine; SQL live pendiente
+echo Fases 4 a 8 - PENDIENTES: agente/chat, OpenAI, SQL E2E, evaluación y UI migrada
 echo Fase 9 - BLOQUEADA: requiere Container Apps Environment operativo
-echo Fases 10 y 11 - PENDIENTES segun los gates de despliegue y validacion
+echo Fase 10 - FUTURA: observabilidad
+echo Fase 11 - FUTURA: RAG documental en Azure AI Search
 echo.
 echo Detalle y fuente de verdad: IMPLEMENTATION_LOG.md y documentos del plan maestro.
 echo Consulta opcion 6 antes de cualquier operacion de infraestructura Azure.

@@ -143,15 +143,15 @@
 - If the result is a different error, stop and inspect it before changing infrastructure.
 - The current Environment is still `Updating`, so the eastus2 attempt remains on hold despite the ARM deployment's terminal failure.
 
-## Phases 3–8 — Local application and Azure data-plane work
+## Previous document-RAG track — retained, not MVP core
 
-**Status:** Local implementation complete; Azure data-plane integration pending identity and secret access
+**Status:** Code/tests retained during migration; this track is superseded as the primary product architecture
 
-The local application now includes the Search index schema and management script, Blob document storage, PDF/DOCX/TXT/MD extraction and chunking, deduplicated ingestion, vector plus keyword retrieval, grounded chat, citation validation, input limits, and a browser chat UI. The application is configured with the approved model values: `text-embedding-3-small` / 1536 dimensions and `gpt-5.6-luna`.
+The repository contains a document-RAG implementation: Search index management, Blob document storage, extraction and chunking, ingestion, hybrid retrieval, grounded chat, and a browser chat UI. Retain this code until the POS replacement is functional and regression-tested, but do not make it the POS query path. Its former model settings (`text-embedding-3-small` / 1536 dimensions and `gpt-5.6-luna`) do not define the new POS runtime model.
 
-The `.env` file was created locally from the sample and is ignored by Git; it contains model configuration only and no API key. `openai-api-key` existence could not be verified because Key Vault denies metadata and secret reads. The Search index was created, but Search document operations are forbidden; Blob ingestion and live model calls have not been performed. Model-backed operations also require the existing secret to be available.
+The `.env` file remains local and ignored by Git; it contains no API key. `openai-api-key` existence could not be verified because Key Vault denies metadata and secret reads. Search document operations were forbidden; Blob ingestion and live model calls were not performed.
 
-Do not create a Container App or begin Phase 9 until a Container Apps Environment is operational. Phases 3–8 can continue locally against the deployed core services when their data-plane identity is authorized.
+Do not create a Container App or begin Phase 9 until a Container Apps Environment is operational. The POS phases continue locally and do not depend on Search/Blob.
 
 ### Local verification
 
@@ -159,7 +159,7 @@ Do not create a Container App or begin Phase 9 until a Container Apps Environmen
 - `.venv\Scripts\ruff.exe check .` — PASS.
 - `git diff --check` — PASS.
 
-## Phase 3 — Azure AI Search
+## Previous Phase 3 — Azure AI Search
 
 **Status:** PARTIAL — index created; data-plane document smoke test blocked by RBAC
 **Date:** 2026-09-28 14:36 COT
@@ -170,7 +170,7 @@ Do not create a Container App or begin Phase 9 until a Container Apps Environmen
 - Do not report data-plane read/write or `is_active` filter acceptance as verified. The identity needs an appropriate Azure AI Search data-plane role; no role assignment was changed.
 - To complete this phase, grant the executing identity `Search Index Data Contributor` on the Search service (or equivalent read and write roles).
 
-## Phase 4 — Document pipeline
+## Previous Phase 4 — Document pipeline
 
 **Status:** IMPLEMENTED LOCALLY; live Azure ingestion pending data-plane and Key Vault access
 **Date:** 2026-09-28 14:36 COT
@@ -180,7 +180,7 @@ Do not create a Container App or begin Phase 9 until a Container Apps Environmen
 - Live ingestion was not run: Search data-plane requests are forbidden, and the Key Vault secret `openai-api-key` could not be read. No sample document was supplied.
 - For live ingestion, the identity also needs `Storage Blob Data Contributor` on the Storage account and `Key Vault Secrets User` on the vault; no assignments were made.
 
-## Phase 5 — Hybrid retrieval
+## Previous Phase 5 — Hybrid retrieval
 
 **Status:** IMPLEMENTED LOCALLY; live retrieval validation pending Search data-plane access and embeddings
 **Date:** 2026-09-28 14:36 COT
@@ -189,7 +189,7 @@ Do not create a Container App or begin Phase 9 until a Container Apps Environmen
 - Unit coverage verifies index schema, filter escaping, and active-document filter construction.
 - Live Search document queries currently return HTTP 403; five-question relevance evaluation has not been run.
 
-## Phase 6 — RAG + LLM
+## Previous Phase 6 — RAG + LLM
 
 **Status:** IMPLEMENTED LOCALLY; live model validation pending Key Vault secret access
 **Date:** 2026-09-28 14:36 COT
@@ -198,7 +198,7 @@ Do not create a Container App or begin Phase 9 until a Container Apps Environmen
 - Approved models are `gpt-5.6-luna` and `text-embedding-3-small` (1536 dimensions); these values are in `.env.example` and the ignored local `.env`.
 - Mocked tests cover valid citations and no-answer behavior. No live model call was made because Key Vault secret retrieval is denied.
 
-## Phase 7 — Guardrails and resilience
+## Previous Phase 7 — Guardrails and resilience
 
 **Status:** LOCAL IMPLEMENTATION PASS
 **Date:** 2026-09-28 14:36 COT
@@ -206,7 +206,7 @@ Do not create a Container App or begin Phase 9 until a Container Apps Environmen
 - Added strict request and metadata validation, upload and history limits, safe error responses, request IDs, provider timeouts, bounded transient retries, citation allowlisting, and prompt-injection instructions for retrieved content.
 - Covered by the passing local test suite. Live dependency-failure behavior remains unverified while data-plane access is unavailable.
 
-## Phase 8 — UI
+## Previous Phase 8 — Document chat UI
 
 **Status:** LOCAL IMPLEMENTATION PASS
 **Date:** 2026-09-28 14:36 COT
@@ -214,6 +214,48 @@ Do not create a Container App or begin Phase 9 until a Container Apps Environmen
 - Added the browser chat UI served by FastAPI, with loading/error states and source/page citations. The UI route test passes.
 - A complete browser-to-Azure chat has not been demonstrated because Search data-plane and Key Vault access are blocked.
 
+## Architecture Rebaseline — POS analytics is the MVP core
+
+**Status:** COMPLETE
+**Date:** 2026-09-28 15:00 COT
+
+- Product scope reset to customer-facing analytics for an authorized TiendasON business/establishment.
+- The local `Agente IA TiendasON` prototype was found, inspected read-only, and is clean on its `main` branch. It is the source of implementation for tenant, readonly database, semantic views, query engine, agent, chat, and UI.
+- The prototype was unchanged during discovery. Phase 3 later copied only the listed application modules, regression tests, and readonly oracle scripts; no Git history, `.git`, `.env`, credentials, or legacy Azure resources were copied.
+- SQL Server plus the `ventas`, `venta_lineas`, and `productos` semantic views is the target core. Azure AI Search/RAG is a later document capability and is not required by the POS path.
+- Microsoft Foundry remains outside the target runtime; existing Foundry account/project/model deployments were not touched.
+- Current target branch was `develop`, synchronized with `origin/develop` at commit `ec5a45d` before this rebaseline.
+- Updated README, AGENTS, architecture, security, deployment, semantic model, migration, roadmap, data model, runbook, and master implementation instructions.
+
+## Phase 3 — TiendasON domain import
+
+**Status:** PASS — local regression suite; live SQL validation pending authorized configuration
+**Date:** 2026-09-28 15:53 COT
+
+### Changes
+
+- Imported `app/tenant.py`, `app/database/`, `app/semantic/`, and `app/query_engine/` from the clean local prototype; adapted imports to the target settings module.
+- Imported the prototype's focused query-engine and three semantic-view regression suites plus their readonly oracle-check scripts.
+- Added SQL Server, business timezone, demo tenant, timeout, row-cap, and query-budget settings. SQL password is retrieved by secret name from Key Vault; it is not stored in Settings or `.env`.
+- Added `pyodbc` and `sqlglot` dependencies and tenant/database connection tests.
+- Updated README, AGENTS, architecture, security, deployment, data model, runbook, semantic model, migration plan, roadmap, and master implementation instructions for the POS analytics rebaseline.
+
+### Verification
+
+- Source regression tests: query engine + `ventas` + `venta_lineas` + `productos` — PASS, 33 tests.
+- Tenant/database focused tests — PASS, 7 tests.
+- Full `.venv\Scripts\python.exe -m pytest -q` — PASS, 56 tests.
+- `.venv\Scripts\ruff.exe check .` — PASS.
+- `git diff --check` — PASS.
+- Verified immutable TenantContext, tenant/business membership query, per-view tenant-scoped physical SQL, strict one-view validator/compiler, readonly ODBC flags, Key Vault password retrieval, connection close, row cap, and truncation handling through source and unit tests.
+
+### Azure and source boundaries
+
+- Azure resources changed: none. No SQL connection or live business query was run.
+- Prototype remains clean and unmodified on `main`; `.git`, `.env`, and secret values were not copied.
+- SQL Server, Key Vault SQL secret, and demo tenant values are not configured in this checkout; live data verification remains pending.
+- Phase 3 code commit: `0014ca5` (`feat: migrate TiendasON semantic query engine`).
+
 ### Next action
 
-- Resolve authorized Search data-plane and Key Vault access, then run a real document ingestion, five retrieval questions, and live chat validation for Phases 3–6. Refresh ARM and Environment states before any infrastructure operation. Phase 9 remains gated until the existing Environment is operational.
+- Phase 4: import the validated agent/chat orchestration with mocks, keeping database tool arguments tenant-free and parallel calls disabled.
