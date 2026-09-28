@@ -83,3 +83,43 @@
 ### Next action
 
 - Phase 2: declare the core Azure resources in Bicep and validate the deployment plan against the existing resource group before deployment.
+
+## Phase 2 — Azure Core infrastructure
+
+**Status:** BLOCKED — partial deployment
+**Date:** 2026-09-28 12:04 COT
+
+### Changes
+
+- Added `infra/core.bicep` and modules for Azure AI Search, private Blob Storage, Key Vault, ACR, monitoring, and a Consumption Container Apps Environment.
+- Registered the providers required by this phase: `Microsoft.Search`, `Microsoft.Storage`, `Microsoft.KeyVault`, `Microsoft.App`, `Microsoft.OperationalInsights`, and `Microsoft.Insights`. ACR and Authorization were already registered.
+- Installed Bicep CLI `0.47.16` locally.
+
+### Azure resources
+
+- Successfully created in the existing resource group:
+  - `srch-tiendas-agent-sbx-k7m4p2` — Azure AI Search Free, `Succeeded`.
+  - `sttiendasagentsbxk7m4p2` and private `knowledge` container — Standard LRS, `Succeeded`.
+  - `kv-tiendas-sbx-k7m4p2` — Standard, RBAC enabled, `Succeeded`.
+  - `acrtiendasagentsbxk7m4p2` — Basic, admin account disabled, `Succeeded`.
+  - `log-tiendas-agent-sbx` — 30-day retention and 1 GB/day ingestion cap, `Succeeded`.
+  - `appi-tiendas-agent-sbx` — workspace-based, `Succeeded`.
+- `cae-tiendas-agent-sbx` failed in `eastus` with `ManagedEnvironmentCapacityHeavyUsageError` / `AKSCapacityHeavyUsage`.
+- The core deployment `tiendas-agent-core` is therefore `Failed` overall. No Container App has been created.
+- The existing Foundry account and project were `Ignore` in `what-if`; neither was changed. No model deployment was touched.
+
+### Commands and checks
+
+- `az bicep build --file infra/core.bicep --stdout` — PASS.
+- `az deployment group validate` — PASS.
+- `az deployment group what-if` — 9 creates, 2 existing Foundry resources ignored; Search Free, ACR Basic, Storage Standard LRS, Consumption environment.
+- `az deployment group create` — PARTIAL; failed only while allocating the Container Apps Environment in `eastus` due Azure regional capacity.
+- Resource state queries confirmed the six listed service resources `Succeeded` and the environment `Failed`.
+
+### Decision required
+
+- The plan's base region is `eastus`. Continue by retrying `eastus` later, or move only the Container Apps Environment to another region. No region change will be made without direction.
+
+### Next action
+
+- Resolve Container Apps Environment region/capacity, then finish Phase 2 before starting Phase 3.
