@@ -128,11 +128,11 @@
 
 ### Azure resources
 
-- Existing `cae-tiendas-agent-sbx` in `eastus` reports `Updating`.
-- ARM deployment `tiendas-agent-env-retry` reports `Running`.
-- Azure still reports `ManagedEnvironmentCapacityHeavyUsageError` / `AKSCapacityHeavyUsage` for `eastus`; the current ARM deployment has not reached a terminal state.
+- ARM deployment `tiendas-agent-env-retry` now reports terminal `Failed`; the deployment operation timed out (`DeploymentFailed`).
+- Existing `cae-tiendas-agent-sbx` in `eastus` still reports `Updating`, with the earlier `ManagedEnvironmentCapacityHeavyUsageError` / `AKSCapacityHeavyUsage` capacity error.
 - No parallel deployment has been started. Do not start one while the deployment is `Running` or the Environment is `Updating`.
 - No Container App has been created.
+- Key Vault metadata listing and secret retrieval were denied by RBAC (`ForbiddenByRbac`, missing `Microsoft.KeyVault/vaults/secrets/readMetadata/action`). This does not establish whether `openai-api-key` exists. No secret value was returned or exposed, and no RBAC was changed.
 
 ### Recovery plan
 
@@ -140,13 +140,77 @@
 - If the current deployment succeeds, use the existing Environment.
 - If it fails specifically because of regional capacity, run `what-if` first and make exactly one Environment attempt in `eastus2` using `appLocation=eastus2`. Keep `dataLocation=eastus` so Search, Storage, Key Vault, ACR, Log Analytics, and Application Insights stay where they already are. Do not create another Resource Group.
 - If the result is a different error, stop and inspect it before changing infrastructure.
+- The current Environment is still `Updating`, so the eastus2 attempt remains on hold despite the ARM deployment's terminal failure.
 
 ## Phases 3–8 — Local application and Azure data-plane work
 
-**Status:** UNBLOCKED by Phase 2B
+**Status:** Local implementation complete; Azure data-plane integration pending identity and secret access
 
-Proceed with Azure AI Search, document ingestion, hybrid retrieval, RAG, guardrails, and UI through local execution against the deployed core services. Do not create a Container App or begin Phase 9 until a Container Apps Environment is operational.
+The local application now includes the Search index schema and management script, Blob document storage, PDF/DOCX/TXT/MD extraction and chunking, deduplicated ingestion, vector plus keyword retrieval, grounded chat, citation validation, input limits, and a browser chat UI. The application is configured with the approved model values: `text-embedding-3-small` / 1536 dimensions and `gpt-5.6-luna`.
+
+The `.env` file was created locally from the sample and is ignored by Git; it contains model configuration only and no API key. `openai-api-key` existence could not be verified because Key Vault denies metadata and secret reads. The Search index was created, but Search document operations are forbidden; Blob ingestion and live model calls have not been performed. Model-backed operations also require the existing secret to be available.
+
+Do not create a Container App or begin Phase 9 until a Container Apps Environment is operational. Phases 3–8 can continue locally against the deployed core services when their data-plane identity is authorized.
+
+### Local verification
+
+- `.venv\Scripts\python.exe -m pytest -v` — PASS, 16 tests.
+- `.venv\Scripts\ruff.exe check .` — PASS.
+- `git diff --check` — PASS.
+
+## Phase 3 — Azure AI Search
+
+**Status:** PARTIAL — index created; data-plane document smoke test blocked by RBAC
+**Date:** 2026-09-28 14:36 COT
+
+- Created/updated `idx-tiendas-knowledge-v1` in the existing Search service with the approved 1536-dimension vector schema — PASS.
+- Search service/index metadata read and schema creation succeeded with the current identity.
+- Synthetic document upload was rejected with HTTP 403 Forbidden; the subsequent cleanup request was also denied and no synthetic record was written. Search document query was rejected with HTTP 403 Forbidden.
+- Do not report data-plane read/write or `is_active` filter acceptance as verified. The identity needs an appropriate Azure AI Search data-plane role; no role assignment was changed.
+
+## Phase 4 — Document pipeline
+
+**Status:** IMPLEMENTED LOCALLY; live Azure ingestion pending data-plane and Key Vault access
+**Date:** 2026-09-28 14:36 COT
+
+- Implemented PDF, DOCX, TXT, and MD extraction, normalization, page-aware token chunking, SHA-256 deduplication, private Blob upload, embeddings, Search upload, update, and delete operations.
+- Local parser/chunking and mocked idempotent ingestion tests pass.
+- Live ingestion was not run: Search data-plane requests are forbidden, and the Key Vault secret `openai-api-key` could not be read. No sample document was supplied.
+
+## Phase 5 — Hybrid retrieval
+
+**Status:** IMPLEMENTED LOCALLY; live retrieval validation pending Search data-plane access and embeddings
+**Date:** 2026-09-28 14:36 COT
+
+- Implemented query embeddings, keyword plus vector Search, active-document filtering, metadata filters, top-k selection, per-document limits, and non-production `/api/v1/debug/search`.
+- Unit coverage verifies index schema, filter escaping, and active-document filter construction.
+- Live Search document queries currently return HTTP 403; five-question relevance evaluation has not been run.
+
+## Phase 6 — RAG + LLM
+
+**Status:** IMPLEMENTED LOCALLY; live model validation pending Key Vault secret access
+**Date:** 2026-09-28 14:36 COT
+
+- Implemented the provider adapter, grounded context builder, citation validation, `/api/v1/chat`, and no-answer behavior without a Foundry dependency.
+- Approved models are `gpt-5.6-luna` and `text-embedding-3-small` (1536 dimensions); these values are in `.env.example` and the ignored local `.env`.
+- Mocked tests cover valid citations and no-answer behavior. No live model call was made because Key Vault secret retrieval is denied.
+
+## Phase 7 — Guardrails and resilience
+
+**Status:** LOCAL IMPLEMENTATION PASS
+**Date:** 2026-09-28 14:36 COT
+
+- Added strict request and metadata validation, upload and history limits, safe error responses, request IDs, provider timeouts, bounded transient retries, citation allowlisting, and prompt-injection instructions for retrieved content.
+- Covered by the passing local test suite. Live dependency-failure behavior remains unverified while data-plane access is unavailable.
+
+## Phase 8 — UI
+
+**Status:** LOCAL IMPLEMENTATION PASS
+**Date:** 2026-09-28 14:36 COT
+
+- Added the browser chat UI served by FastAPI, with loading/error states and source/page citations. The UI route test passes.
+- A complete browser-to-Azure chat has not been demonstrated because Search data-plane and Key Vault access are blocked.
 
 ### Next action
 
-- Continue Phase 3 against `srch-tiendas-agent-sbx-k7m4p2`; do not run a Bicep deployment while `tiendas-agent-env-retry` is still `Running`.
+- Resolve authorized Search data-plane and Key Vault access, then run a real document ingestion, five retrieval questions, and live chat validation for Phases 3–6. Refresh ARM and Environment states before any infrastructure operation. Phase 9 remains gated until the existing Environment is operational.

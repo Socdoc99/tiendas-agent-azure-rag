@@ -28,4 +28,8 @@ docker build -t tiendas-agent-azure-rag .
 
 En Windows tambien puedes abrir el menu local y de preflight con [`scripts/workflow.bat`](scripts/workflow.bat). El menu no aplica despliegues Azure; revisa primero el estado remoto y exige `what-if` antes de cualquier futura operacion Bicep.
 
+Flujo local: opción `1` prepara el entorno y crea `.env` sin sobrescribirlo; opción `2` consulta suscripción, recursos, providers, roles y herramientas; opción `3` ejecuta pytest y Ruff; opción `9` crea/actualiza el índice Search; opción `4` inicia la API. Con la API activa en una terminal, usa la opción `A` en otra ventana para subir e indexar un PDF, DOCX, TXT o MD. El índice está creado en el sandbox. La identidad actual todavía recibe 403 al consultar/escribir documentos Search y no puede leer el secreto de Key Vault, así que la ingesta real y el chat quedan pendientes de corregir el acceso de datos.
+
+La Fase 2B de Container Apps sigue en curso remoto. No ejecutes Fase 9 hasta que `cae-tiendas-agent-sbx` esté operativo. Las Fases 3–8 se trabajan localmente; el detalle verificado está en [`IMPLEMENTATION_LOG.md`](IMPLEMENTATION_LOG.md).
+
 Consulta [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SECURITY.md](docs/SECURITY.md) y [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) para la arquitectura y operación.

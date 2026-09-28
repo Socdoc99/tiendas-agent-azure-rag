@@ -13,6 +13,9 @@ set "EXPECTED_ACCOUNT=santiago9902@hotmail.com"
 set "RESOURCE_GROUP=rg-tiendas-agent-sbx"
 set "FOUNDRY_ACCOUNT=ai-tiendas-agent-sbx-k7m4p2"
 set "FOUNDRY_PROJECT=tiendason-agent-sbx"
+set "SEARCH_SERVICE=srch-tiendas-agent-sbx-k7m4p2"
+set "STORAGE_ACCOUNT=sttiendasagentsbxk7m4p2"
+set "KEY_VAULT=kv-tiendas-sbx-k7m4p2"
 set "ENVIRONMENT=cae-tiendas-agent-sbx"
 set "DEPLOYMENT=tiendas-agent-env-retry"
 
@@ -25,14 +28,18 @@ echo 1. Preparar entorno local
 echo 2. Verificar sesion, repo y herramientas
 echo 3. Ejecutar pruebas y lint
 echo 4. Ejecutar API local
-echo 5. Construir imagen Docker local
+echo 5. Construir imagen Docker local [Fase 9: requiere ACA operativo]
 echo 6. Consultar estado Azure (solo lectura)
 echo 7. Verificar Bicep y revisar What-If (sin aplicar)
 echo 8. Ver fases y gate actual
+echo 9. Crear/actualizar indice Azure AI Search
+echo A. Subir e indexar un documento via API local
 echo 0. Salir
 echo.
-choice /c 123456780 /n /m "Selecciona una opcion: "
-if errorlevel 9 goto :done
+choice /c 123456789A0 /n /m "Selecciona una opcion: "
+if errorlevel 11 goto :done
+if errorlevel 10 goto :ingest_document
+if errorlevel 9 goto :create_search_index
 if errorlevel 8 goto :roadmap
 if errorlevel 7 goto :azure_whatif
 if errorlevel 6 goto :azure_status
@@ -110,6 +117,12 @@ azd ai connection version
 echo.
 echo [Preflight] Roles en la suscripcion objetivo
 az role assignment list --assignee "%EXPECTED_ACCOUNT%" --scope "/subscriptions/%EXPECTED_SUBSCRIPTION%" --query "[].roleDefinitionName" -o tsv
+echo Roles Search data-plane:
+az role assignment list --assignee "%EXPECTED_ACCOUNT%" --scope "/subscriptions/%EXPECTED_SUBSCRIPTION%/resourceGroups/%RESOURCE_GROUP%/providers/Microsoft.Search/searchServices/%SEARCH_SERVICE%" --query "[].roleDefinitionName" -o tsv
+echo Roles Storage data-plane:
+az role assignment list --assignee "%EXPECTED_ACCOUNT%" --scope "/subscriptions/%EXPECTED_SUBSCRIPTION%/resourceGroups/%RESOURCE_GROUP%/providers/Microsoft.Storage/storageAccounts/%STORAGE_ACCOUNT%" --query "[].roleDefinitionName" -o tsv
+echo Roles Key Vault data-plane:
+az role assignment list --assignee "%EXPECTED_ACCOUNT%" --scope "/subscriptions/%EXPECTED_SUBSCRIPTION%/resourceGroups/%RESOURCE_GROUP%/providers/Microsoft.KeyVault/vaults/%KEY_VAULT%" --query "[].roleDefinitionName" -o tsv
 goto :pause_menu
 
 :local_checks
@@ -145,6 +158,12 @@ goto :pause_menu
 
 :docker_build
 echo.
+set "ENV_STATE="
+for /f "usebackq delims=" %%S in (`az containerapp env show --resource-group "%RESOURCE_GROUP%" --name "%ENVIRONMENT%" --query properties.provisioningState -o tsv 2^>nul`) do set "ENV_STATE=%%S"
+if /I not "!ENV_STATE!"=="Succeeded" (
+  echo BLOQUEADO: Fase 9 requiere Container Apps Environment Succeeded; estado actual: !ENV_STATE!
+  goto :pause_menu
+)
 docker version >nul 2>nul || (echo ERROR: Docker no esta disponible.& goto :pause_menu)
 docker build -t tiendas-agent-azure-rag:local .
 if errorlevel 1 echo ERROR: Fallo el build de Docker.
@@ -195,18 +214,52 @@ echo [Bicep] What-If (no aplica recursos). Revisa cada cambio antes de autorizar
 az deployment group what-if --resource-group "%RESOURCE_GROUP%" --name tiendas-agent-core-review --template-file infra\core.bicep --parameters searchSku=free dataLocation=eastus appLocation=eastus
 goto :pause_menu
 
+:create_search_index
+echo.
+if not exist ".venv\Scripts\python.exe" (
+  echo Ejecuta primero la opcion 1 para preparar .venv.
+  goto :pause_menu
+)
+echo Estado ARM y ACA antes de operar Search:
+az deployment group show --resource-group "%RESOURCE_GROUP%" --name "%DEPLOYMENT%" --query properties.provisioningState -o tsv
+az containerapp env show --resource-group "%RESOURCE_GROUP%" --name "%ENVIRONMENT%" --query properties.provisioningState -o tsv
+echo El indice es una operacion de data-plane; no inicia un deployment ARM paralelo.
+".venv\Scripts\python.exe" scripts\create_search_index.py
+if errorlevel 1 echo ERROR: El indice no se pudo crear. Revisa modelo de embeddings, dimensiones e identidad de Search.
+goto :pause_menu
+
+:ingest_document
+echo.
+if not exist ".venv\Scripts\python.exe" (
+  echo Ejecuta primero la opcion 1 para preparar .venv.
+  goto :pause_menu
+)
+set "DOCUMENT_PATH="
+set /p "DOCUMENT_PATH=Ruta del archivo PDF, DOCX, TXT o MD: "
+if not defined DOCUMENT_PATH goto :pause_menu
+echo Estado ARM y ACA antes de indexar contenido:
+az deployment group show --resource-group "%RESOURCE_GROUP%" --name "%DEPLOYMENT%" --query properties.provisioningState -o tsv
+az containerapp env show --resource-group "%RESOURCE_GROUP%" --name "%ENVIRONMENT%" --query properties.provisioningState -o tsv
+echo La ingesta usa la API local y los servicios Azure de datos ya desplegados.
+".venv\Scripts\python.exe" scripts\ingest_document.py "%DOCUMENT_PATH%"
+if errorlevel 1 echo ERROR: No se pudo cargar e indexar el documento.
+goto :pause_menu
+
 :roadmap
 echo.
 echo Fase 0 - PASS: preflight registrado en IMPLEMENTATION_LOG.md
 echo Fase 1 - PASS: FastAPI base y verificaciones locales
 echo Fase 2A - PASS: Core Infrastructure en el RG existente
-echo Fase 2B - PENDIENTE: ACA en eastus sigue en deployment Running / Environment Updating
-echo Fases 3 a 8 - ABIERTAS: ejecutar localmente contra los servicios Azure existentes
+echo Fase 2B - PENDIENTE: ultimo estado ARM Failed por timeout; ACA sigue Updating
+echo Fase 3 - PARCIAL: indice creado; prueba Search data-plane devuelve 403
+echo Fases 4 a 6 - IMPLEMENTADAS LOCALMENTE; Azure Search y Key Vault bloquean validacion E2E
+echo Fases 7 y 8 - PASS local; tests y ruta UI verificados
 echo Fase 9 - BLOQUEADA: requiere Container Apps Environment operativo
 echo Fases 10 y 11 - PENDIENTES segun los gates de despliegue y validacion
 echo.
 echo Detalle y fuente de verdad: IMPLEMENTATION_LOG.md y documentos del plan maestro.
-echo Consulta opcion 6 antes de cualquier operacion Azure para refrescar el estado remoto.
+echo Consulta opcion 6 antes de cualquier operacion de infraestructura Azure.
+echo No inicies otro deployment hasta que el Environment deje de estar Updating.
 goto :pause_menu
 
 :pause_menu
