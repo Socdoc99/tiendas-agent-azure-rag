@@ -1,10 +1,13 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", env_ignore_empty=True, extra="ignore"
+    )
 
     environment: str = "sbx"
     azure_region: str | None = None
@@ -18,7 +21,7 @@ class Settings(BaseSettings):
 
     openai_chat_model: str | None = None
     openai_embedding_model: str | None = None
-    embedding_dimensions: int = 1536
+    embedding_dimensions: int | None = Field(default=None, gt=0)
 
     chunk_size_tokens: int = 800
     chunk_overlap_tokens: int = 120
@@ -27,6 +30,7 @@ class Settings(BaseSettings):
     max_chat_history_messages: int = 8
     max_query_length: int = 4000
     max_upload_mb: int = 25
+    openai_timeout_seconds: float = Field(default=30, gt=0, le=120)
     applicationinsights_connection_string: str | None = None
     log_level: str = "INFO"
 
@@ -38,6 +42,7 @@ class Settings(BaseSettings):
             "AZURE_KEY_VAULT_URL": self.azure_key_vault_url,
             "OPENAI_CHAT_MODEL": self.openai_chat_model,
             "OPENAI_EMBEDDING_MODEL": self.openai_embedding_model,
+            "EMBEDDING_DIMENSIONS": self.embedding_dimensions,
         }
         return [name for name, value in required.items() if not value]
 

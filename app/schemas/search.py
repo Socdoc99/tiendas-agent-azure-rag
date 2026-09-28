@@ -21,3 +21,4 @@ class SearchChunk(BaseModel):
     source_url: str | None = None
     created_at: datetime | None = None
     allowed_groups: list[str] = Field(default_factory=list)
+    score: float | None = None
