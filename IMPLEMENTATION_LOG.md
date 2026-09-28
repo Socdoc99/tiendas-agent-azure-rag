@@ -305,8 +305,8 @@ Do not create a Container App or begin Phase 9 until a Container Apps Environmen
 ### Key Vault and smoke status
 
 - `KEY_VAULT_SECRET_CHECK=BLOCKED_BY_RBAC` for `kv-tiendas-sbx-k7m4p2`. Azure CLI is authenticated as `santiago9902@hotmail.com`; the vault uses RBAC. Visible assignments are `Owner` at subscription scope, whose role definition has no `dataActions`.
-- A metadata-only `az keyvault secret show --query id` request for `openai-api-key` was denied: `Microsoft.KeyVault/vaults/secrets/getSecret/action` (`ForbiddenByRbac`). Secret existence is therefore unverified and its value was never returned or displayed.
-- Minimum recommended access: `Key Vault Secrets User` scoped to the `openai-api-key` secret, or a custom role granting `Microsoft.KeyVault/vaults/secrets/getSecret/action` at that secret scope. No RBAC assignment, Entra configuration, or security default was changed.
+- Metadata-only `az keyvault secret list --query "[?name=='openai-api-key'].name"` was denied: `Microsoft.KeyVault/vaults/secrets/readMetadata/action` at vault scope. An identifier-only `az keyvault secret show --query id` was also denied: `Microsoft.KeyVault/vaults/secrets/getSecret/action`. Secret existence is unverified; no secret value was returned or displayed.
+- Minimum permission for runtime retrieval is `Microsoft.KeyVault/vaults/secrets/getSecret/action` at the individual secret scope. Metadata-only list verification requires `readMetadata/action` at vault scope. A custom role can grant only the required action/scope; built-in `Key Vault Secrets User` includes both actions and is broader when assigned at vault scope. No RBAC assignment, Entra configuration, or security default was changed.
 - `OPENAI_REAL_SMOKE=BLOCKED_BY_RBAC`; no real OpenAI call was attempted.
 
 ### Verification

@@ -1651,7 +1651,7 @@ FASE 4 — Importación del agente y chat: PASS local. Se migraron instrucciones
 
 FASE 5 — Migración Foundry -> OpenAI Provider: PASS local; OpenAI real smoke BLOCKED BY RBAC. El grafo depende de `LLMProvider`; `OpenAIProvider` crea el modelo configurado por `OPENAI_CHAT_MODEL` (`gpt-5-mini`) y obtiene la clave por nombre desde Key Vault. No hay fallback a Foundry ni a otro modelo. Las pruebas son locales y mockeadas; no se llamó OpenAI ni se modificaron semantic layer, query engine, tenant o SQL.
 
-KEY_VAULT_SECRET_CHECK=BLOCKED_BY_RBAC. El Key Vault usa RBAC. La cuenta Azure CLI actual tiene asignaciones `Owner` a nivel de suscripción, pero ese rol no concede `dataActions`; se denegó `Microsoft.KeyVault/vaults/secrets/getSecret/action` al consultar solo el identificador de `openai-api-key`. Scope mínimo recomendado: rol `Key Vault Secrets User` en el scope del secreto `openai-api-key` (o permiso personalizado `secrets/get` al mismo scope). No se modificó RBAC.
+KEY_VAULT_SECRET_CHECK=BLOCKED_BY_RBAC. El Key Vault usa RBAC. La cuenta Azure CLI actual tiene asignaciones `Owner` a nivel de suscripción, pero ese rol no concede `dataActions`. El listado solo de metadatos fue denegado para `Microsoft.KeyVault/vaults/secrets/readMetadata/action`; la consulta del identificador del secreto también fue denegada para `Microsoft.KeyVault/vaults/secrets/getSecret/action`. El scope mínimo para lectura runtime es el secreto `openai-api-key` con `getSecret`; la comprobación de metadatos por listado requiere `readMetadata` a nivel del vault. No se modificó RBAC.
 
 No continuar a Fase 6 hasta nueva instrucción. La verificación local de Fase 5 está completa; el smoke real queda bloqueado hasta que una identidad autorizada pueda verificar/resolver el secreto.
 
