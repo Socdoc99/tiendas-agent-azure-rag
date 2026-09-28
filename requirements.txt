@@ -16,5 +16,6 @@ python-multipart>=0.0.20,<1
 httpx>=0.28,<1
 pyodbc>=5.2,<6
 sqlglot>=27,<29
+langchain-openai>=1.6,<2
 langgraph>=1.2,<2
 tzdata>=2025.1

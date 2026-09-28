@@ -21,6 +21,7 @@ from pydantic import ValidationError
 from app.agent.instructions import AGENT_INSTRUCTIONS
 from app.agent.tools import LogicalQueryInput, QueryExecutor, create_query_database_tool
 from app.core.config import Settings
+from app.llm import LLMProvider
 from app.query_engine import query_database
 from app.query_engine.validator import validate_logical_sql
 from app.tenant import TenantContext
@@ -92,23 +93,35 @@ def build_agent_graph(
     settings: Settings,
     tenant: TenantContext,
     model: Any | None = None,
+    provider: LLMProvider | None = None,
     query_executor: QueryExecutor = query_database,
 ) -> CompiledStateGraph:
     """Build the two-node graph with a hard per-question query budget."""
 
+    if model is not None and provider is not None:
+        raise AgentGraphError("Pass either a model or a provider, not both.")
+
     if model is None:
-        raise AgentGraphError("An LLM model must be injected into the agent graph.")
+        if provider is None:
+            raise AgentGraphError("An LLM provider must be injected into the agent graph.")
+        try:
+            model = provider.get_chat_model()
+        except Exception as error:
+            raise AgentGraphError("The model provider could not be initialized.") from error
 
     tool = create_query_database_tool(
         tenant=tenant,
         settings=settings,
         query_executor=query_executor,
     )
-    model_with_tools = model.bind_tools(
-        [tool],
-        strict=True,
-        parallel_tool_calls=False,
-    )
+    try:
+        model_with_tools = model.bind_tools(
+            [tool],
+            strict=True,
+            parallel_tool_calls=False,
+        )
+    except Exception as error:
+        raise AgentGraphError("The model does not support the required tool contract.") from error
 
     def agent_node(state: AgentState) -> dict[str, list[AIMessage]]:
         query_count = min(
@@ -120,7 +133,12 @@ def build_agent_graph(
         if query_count >= MAX_QUERY_DATABASE_ATTEMPTS:
             instructions = f"{instructions}\n\n{_LIMIT_INSTRUCTION}"
             active_model = model
-        response = active_model.invoke([SystemMessage(content=instructions), *state["messages"]])
+        try:
+            response = active_model.invoke(
+                [SystemMessage(content=instructions), *state["messages"]]
+            )
+        except Exception as error:
+            raise AgentGraphError("The model provider request failed.") from error
         if not isinstance(response, AIMessage):
             raise AgentGraphError("The model did not return an AIMessage.")
         return {"messages": [response]}
@@ -184,16 +202,18 @@ def build_agent_graph(
     builder.add_conditional_edges("agent", route_after_agent)
     builder.add_edge("tools", "agent")
     graph = builder.compile()
+    if provider is not None:
+        graph._tiendason_llm_provider = provider
     return graph
 
 
 def close_agent_graph(graph: CompiledStateGraph) -> None:
     """Close a provider client explicitly attached to this graph, if any."""
 
-    runtime = getattr(graph, "_tiendason_model_runtime", None)
-    if runtime is not None:
-        runtime.close()
-        graph._tiendason_model_runtime = None
+    provider = getattr(graph, "_tiendason_llm_provider", None)
+    if provider is not None:
+        provider.close()
+        graph._tiendason_llm_provider = None
 
 
 def _query_attempts(messages: list[BaseMessage]) -> tuple[QueryAttempt, ...]:

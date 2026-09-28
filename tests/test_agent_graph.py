@@ -95,8 +95,8 @@ class LangGraphTests(unittest.TestCase):
             {"__start__", "agent", "tools", "__end__"},
         )
 
-    def test_graph_requires_an_injected_model(self) -> None:
-        with self.assertRaisesRegex(RuntimeError, "must be injected"):
+    def test_graph_requires_configured_provider_and_does_not_fallback(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "LLM provider must be injected"):
             build_agent_graph(self.settings, self.tenant)
 
     def test_tool_schema_exposes_only_logical_sql_and_binds_server_context(self) -> None:

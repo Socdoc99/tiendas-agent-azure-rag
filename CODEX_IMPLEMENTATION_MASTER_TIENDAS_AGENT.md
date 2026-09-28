@@ -1649,6 +1649,10 @@ FASE 3 — Importación del dominio TiendasON: PASS en pruebas locales. Se impor
 
 FASE 4 — Importación del agente y chat: PASS local. Se migraron instrucciones, tool, grafo LangGraph, modelos/contratos de chat, servicio y almacenamiento de conversaciones. El grafo exige un modelo inyectado; las pruebas usaron fakes, con llamadas paralelas deshabilitadas y tope de 10 consultas por turno. La UI/API aún no se conecta al nuevo servicio (Fase 8). No se llamó OpenAI, Foundry ni SQL.
 
-Próxima acción: FASE 5 — crear `LLMProvider`/`OpenAIProvider` desacoplado y verificar sin exponer el secreto `openai-api-key` en Key Vault antes de cualquier llamada real. Mantener intactas las piezas legacy hasta que el reemplazo y sus pruebas estén verdes.
+FASE 5 — Migración Foundry -> OpenAI Provider: PASS local; OpenAI real smoke BLOCKED BY RBAC. El grafo depende de `LLMProvider`; `OpenAIProvider` crea el modelo configurado por `OPENAI_CHAT_MODEL` (`gpt-5-mini`) y obtiene la clave por nombre desde Key Vault. No hay fallback a Foundry ni a otro modelo. Las pruebas son locales y mockeadas; no se llamó OpenAI ni se modificaron semantic layer, query engine, tenant o SQL.
+
+KEY_VAULT_SECRET_CHECK=BLOCKED_BY_RBAC. El Key Vault usa RBAC. La cuenta Azure CLI actual tiene asignaciones `Owner` a nivel de suscripción, pero ese rol no concede `dataActions`; se denegó `Microsoft.KeyVault/vaults/secrets/getSecret/action` al consultar solo el identificador de `openai-api-key`. Scope mínimo recomendado: rol `Key Vault Secrets User` en el scope del secreto `openai-api-key` (o permiso personalizado `secrets/get` al mismo scope). No se modificó RBAC.
+
+No continuar a Fase 6 hasta nueva instrucción. La verificación local de Fase 5 está completa; el smoke real queda bloqueado hasta que una identidad autorizada pueda verificar/resolver el secreto.
 
 No volver a ejecutar Fase 0, no recrear infraestructura, no comenzar por Azure AI Search y no iniciar Fase 9 mientras ACA no esté operativo.

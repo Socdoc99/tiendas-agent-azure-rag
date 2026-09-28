@@ -7,7 +7,11 @@ name = "tiendas-agent-azure-rag"
 version = "0.1.0"
 description = "Enterprise document question answering with Azure AI Search"
 requires-python = ">=3.11"
-dependencies = ["langgraph>=1.2,<2", "tzdata>=2025.1"]
+dependencies = [
+    "langchain-openai>=1.6,<2",
+    "langgraph>=1.2,<2",
+    "tzdata>=2025.1",
+]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

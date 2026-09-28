@@ -288,3 +288,37 @@ Do not create a Container App or begin Phase 9 until a Container Apps Environmen
 ### Next action
 
 - Phase 5: implement the decoupled `LLMProvider` and OpenAI provider; check Key Vault secret existence without revealing its value before any real call.
+
+## Phase 5 — Foundry to OpenAI provider
+
+**Status:** PASS locally; real OpenAI smoke BLOCKED BY RBAC
+**Date:** 2026-09-28
+
+### Implementation
+
+- Added `app/llm/` with an `LLMProvider` protocol, safe provider error, and `OpenAIProvider` backed by the existing Key Vault secret provider.
+- LangGraph now depends on the `LLMProvider` interface and accepts an injected provider or model; the application composition point can supply `OpenAIProvider`. It binds only `query_database` with strict schema and parallel tool calls disabled, enforces the existing 10-query limit, and maps provider initialization/request errors to controlled messages. No model fallback is implemented.
+- Set `OPENAI_CHAT_MODEL=gpt-5-mini` in `.env.example` and configured `OPENAI_API_KEY_SECRET_NAME=openai-api-key`; the model remains environment-configurable. Added `langchain-openai` dependency. No API key is included in code, examples, tests, docs, or logs.
+- Added small local architecture guides for the existing `app`, `agent`, `llm`, `semantic`, `query_engine`, `database`, `infra`, `scripts`, and `tests` directories. Did not create guides for absent `evaluation`, `reference`, or `app/rag` directories.
+- Target repo contains no Foundry runtime code under `app/` or `tests/`. The existing Foundry Azure resources and source prototype implementation remain untouched; there is no Foundry fallback in the POS provider path.
+
+### Key Vault and smoke status
+
+- `KEY_VAULT_SECRET_CHECK=BLOCKED_BY_RBAC` for `kv-tiendas-sbx-k7m4p2`. Azure CLI is authenticated as `santiago9902@hotmail.com`; the vault uses RBAC. Visible assignments are `Owner` at subscription scope, whose role definition has no `dataActions`.
+- A metadata-only `az keyvault secret show --query id` request for `openai-api-key` was denied: `Microsoft.KeyVault/vaults/secrets/getSecret/action` (`ForbiddenByRbac`). Secret existence is therefore unverified and its value was never returned or displayed.
+- Minimum recommended access: `Key Vault Secrets User` scoped to the `openai-api-key` secret, or a custom role granting `Microsoft.KeyVault/vaults/secrets/getSecret/action` at that secret scope. No RBAC assignment, Entra configuration, or security default was changed.
+- `OPENAI_REAL_SMOKE=BLOCKED_BY_RBAC`; no real OpenAI call was attempted.
+
+### Verification
+
+- Provider-focused tests cover configured model/secret-name resolution, model construction without a request, missing model/Key Vault configuration, secret-resolution failure sanitization, provider injection, required tool contract, and safe model-request failure.
+- `python -m unittest discover -s tests -v`: PASS, 50 tests.
+- `.venv\Scripts\python.exe -m pytest -q`: PASS, 85 tests.
+- `.venv\Scripts\ruff.exe check .`: PASS.
+- `git diff --check`: PASS.
+- No SQL, semantic view, tenant isolation, Azure resource, or model deployment was changed. Did not proceed to Phase 6.
+
+### Principal files
+
+- Added: `app/llm/{__init__.py,base.py,openai_provider.py}`, `tests/test_openai_provider.py`, and local module README guides.
+- Modified: `app/agent/graph.py`, `.env.example`, `pyproject.toml`, `requirements.txt`, `README.md`, `docs/ARCHITECTURE.md`, `docs/MIGRATION.md`, `docs/ROADMAP.md`, and this log. `Settings.openai_chat_model` remains optional/configurable; no model is hardcoded in application logic.
