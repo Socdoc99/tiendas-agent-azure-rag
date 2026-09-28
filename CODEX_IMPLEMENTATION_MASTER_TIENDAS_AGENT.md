@@ -1647,6 +1647,8 @@ Estado verificado el 2026-09-28:
 
 FASE 3 — Importación del dominio TiendasON: PASS en pruebas locales. Se importaron los módulos indicados desde el prototipo y se adaptó la contraseña SQL para obtenerse desde Key Vault. La validación contra SQL real sigue pendiente de configuración/credenciales autorizadas. No se conectó a la base.
 
-Próxima acción: FASE 4 — Importación del agente y chat, usando mocks/fakes y preservando el límite de una semantic view por consulta. Antes de reemplazar Foundry, mantener intactas las piezas legacy hasta que OpenAI y sus tests estén verdes.
+FASE 4 — Importación del agente y chat: PASS local. Se migraron instrucciones, tool, grafo LangGraph, modelos/contratos de chat, servicio y almacenamiento de conversaciones. El grafo exige un modelo inyectado; las pruebas usaron fakes, con llamadas paralelas deshabilitadas y tope de 10 consultas por turno. La UI/API aún no se conecta al nuevo servicio (Fase 8). No se llamó OpenAI, Foundry ni SQL.
+
+Próxima acción: FASE 5 — crear `LLMProvider`/`OpenAIProvider` desacoplado y verificar sin exponer el secreto `openai-api-key` en Key Vault antes de cualquier llamada real. Mantener intactas las piezas legacy hasta que el reemplazo y sus pruebas estén verdes.
 
 No volver a ejecutar Fase 0, no recrear infraestructura, no comenzar por Azure AI Search y no iniciar Fase 9 mientras ACA no esté operativo.

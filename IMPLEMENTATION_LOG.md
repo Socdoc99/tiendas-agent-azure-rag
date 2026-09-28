@@ -259,3 +259,32 @@ Do not create a Container App or begin Phase 9 until a Container Apps Environmen
 ### Next action
 
 - Phase 4: import the validated agent/chat orchestration with mocks, keeping database tool arguments tenant-free and parallel calls disabled.
+
+## Phase 4 — Agent orchestration and chat contracts
+
+**Status:** PASS — local fake-model regression tests; no live model, SQL, or Azure call
+**Date:** 2026-09-28
+
+### Changes
+
+- Imported the prototype's Spanish business instructions, strict `query_database` tool, LangGraph agent loop, safe query diagnostics, chat request/response models, conversation service, and process-local conversation store.
+- The graph accepts an injected model and rejects missing providers explicitly; the OpenAI provider is deferred to Phase 5. No Foundry/OpenAI path was called.
+- Preserved sequential tool handling, `parallel_tool_calls=False`, the maximum of 10 queries per question, server-side tenant/settings injection, and public-only conversation history.
+- Added LangGraph and timezone-data dependencies for Python 3.11/Windows; added graph, instructions, and chat-service regression tests.
+
+### Verification
+
+- Focused agent, instructions, chat, domain/query, tenant and database suites: PASS.
+- Full `.venv\Scripts\python.exe -m pytest -q`: PASS, 78 tests.
+- `.venv\Scripts\ruff.exe check .`: PASS after formatting.
+- `git diff --check`: PASS.
+- Tests prove graph construction with a fake model, strict tool schema, no unsupported tool execution, sequential queries, budget enforcement, tenant-free model arguments, accepted public history, rejection of tool messages, and no persistence of failed turns.
+
+### Boundaries
+
+- No actual SQL connection, model call, Key Vault access, or Azure resource operation was performed.
+- API/UI routing remains unchanged and is deferred to Phase 8. Model configuration remains unchanged.
+
+### Next action
+
+- Phase 5: implement the decoupled `LLMProvider` and OpenAI provider; check Key Vault secret existence without revealing its value before any real call.
